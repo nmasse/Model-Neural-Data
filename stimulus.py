@@ -8,9 +8,9 @@ class Stimulus:
 
     def __init__(self):
 
-        data_dir = '/home/masse/Downloads/'
+        data_dir = '/home/masse/'
         data = sio.loadmat(data_dir + 'spike_trains.mat')
-        self.spike_data = data['spike_train'][:,:,:, par['neuron_ind']]
+        self.spike_data = np.squeeze(data['spike_train'][:,:,:, par['neuron_ind']])
 
     def generate_trial(self):
 
@@ -19,19 +19,16 @@ class Stimulus:
 
     def generate_neural_data_trial(self):
 
-
         eodead = par['dead_time']//par['dt']
         eof = (par['dead_time']+par['fix_time'])//par['dt']
         eos = (par['dead_time']+par['fix_time']+par['sample_time'])//par['dt']
         eod = (par['dead_time']+par['fix_time']+par['sample_time']+par['delay_time'])//par['dt']
         eot = (par['dead_time']+par['fix_time']+par['sample_time']+par['delay_time']+par['test_time'])//par['dt']
-        trial_length = (par['dead_time']+par['fix_time']+par['sample_time']+par['delay_time']+par['test_time'])//par['dt']
-
-        trial_info = {'desired_output'  :  np.zeros((par['n_output'], trial_length, par['batch_train_size']),dtype=np.float32),
-                      'train_mask'      :  np.ones((trial_length, par['batch_train_size']),dtype=np.float32),
-                      'sample'          :  np.zeros((par['batch_train_size'],2),dtype=np.int8),
-                      'test'            :  np.zeros((par['batch_train_size'],2,2),dtype=np.int8),
-                      'neural_input'    :  np.random.normal(par['input_mean'], par['noise_in'], size=(par['num_motion_dirs'], trial_length, par['batch_train_size']))}
+        trial_info = {'desired_output'  :  np.zeros((par['n_output'], par['num_time_steps'], par['batch_train_size']),dtype=np.float32),
+                      'train_mask'      :  np.ones((par['num_time_steps'], par['batch_train_size']),dtype=np.float32),
+                      'sample'          :  np.zeros((par['batch_train_size']),dtype=np.int8),
+                      'test'            :  np.zeros((par['batch_train_size']),dtype=np.int8),
+                      'neural_input'    :  np.random.normal(par['input_mean'], par['noise_in'], size=(par['num_motion_dirs'], par['num_time_steps'], par['batch_train_size']))}
 
 
 
@@ -49,6 +46,6 @@ class Stimulus:
             Desired outputs
             """
             trial_info['desired_output'][:,:, t] = \
-                self.spike_data[trial_info['sample'][t], trial_info['test'][t], :, :]
+                np.transpose(self.spike_data[trial_info['sample'][t], trial_info['test'][t], :, :])
 
         return trial_info

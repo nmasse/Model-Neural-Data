@@ -15,16 +15,15 @@ par = {
 
 
     # Network shape
-    'n_recurrent'           : 10,
-    'n_hidden'              : [25],
-    'connection_prob'       : 1,         # Usually 1
+    'n_recurrent'           : 5,
+    'n_hidden'              : [6],
 
     # Timings and rates
     'dt'                    : 10,
     'learning_rate'         : 1e-3,
 
     # Areas to include
-    'areas'                 : [1,2,3],
+    'areas'                 : [1],
 
     # Variance values
     'clip_max_grad_val'     : 1,
@@ -37,28 +36,21 @@ par = {
 
     # Cost parameters
     'spike_cost'            : 0.,
-    'wiring_cost'           : 1e-7,
+    'weight_cost'           : 1e-7,
 
 
     # Training specs
     'batch_train_size'      : 256,
     'num_iterations'        : 2000,
-    'iters_between_outputs' : 50,
+    'iters_between_outputs' : 10,
 
     # Task specs
-    'trial_type'            : 'DMS', # allowable types: DMS, DMRS45, DMRS90, DMRS180, DMC, DMS+DMRS, ABBA, ABCA, dualDMS
-    'rotation_match'        : 0,  # angular difference between matching sample and test
-    'dead_time'             : 250,
+    'dead_time'             : 100,
     'fix_time'              : 400,
-    'sample_time'           : 400,
-    'delay_time'            : 800,
-    'test_time'             : 400,
-    'variable_delay_max'    : 600,
-    'mask_duration'         : 50,  # duration of traing mask after test onset
-    'catch_trial_pct'       : 0.0,
-    'num_receptive_fields'  : 1,
-    'num_rules'             : 1, # this will be two for the DMS+DMRS task
-    'decoding_test_mode'    : False,
+    'sample_time'           : 660,
+    'delay_time'            : 1010,
+    'test_time'             : 430,
+
 
     # Save paths
     'save_fn'               : 'model_results.pkl',
@@ -84,13 +76,13 @@ def update_dependencies():
     Updates all parameter dependencies
     """
 
-    data_dir = '/home/masse/Downloads/'
+    data_dir = '/home/masse/'
     data = sio.loadmat(data_dir + 'spike_trains.mat')
-    par['neuron_ind'] = [i for in data['area'] if i in par['areas']]
+    par['neuron_ind'] = [i for i in data['area'] if i in par['areas']]
     par['n_output'] = len(par['neuron_ind'])
 
-    par['noise_rnn'] = np.sqrt(2*par['alpha_neuron'])*par['noise_rnn_sd']
-    par['noise_in'] = np.sqrt(2/par['alpha_neuron'])*par['noise_in_sd'] # since term will be multiplied by par['alpha_neuron']
+    par['noise_rnn'] = 1.*par['noise_rnn_sd']
+    par['noise_in'] = 1.*par['noise_in_sd'] # since term will be multiplied by par['alpha_neuron']
 
     par['trial_length'] = par['dead_time']+par['fix_time']+par['sample_time']+par['delay_time']+par['test_time']
     # Length of each trial in time steps
@@ -124,7 +116,6 @@ def initialize(dims):
     return np.float32(w)
 
 
-update_trial_params()
 update_dependencies()
 
 print("--> Parameters successfully loaded.\n")
