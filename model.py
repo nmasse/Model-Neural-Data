@@ -41,14 +41,17 @@ class Model:
         self.rnn_cell_loop(self.input_data, self.hidden_init)
 
         with tf.variable_scope('output'):
-            W_out = tf.get_variable('W_out', initializer = par['w_out0'], trainable=True)
-            b_out = tf.get_variable('b_out', initializer = par['b_out0'], trainable=True)
+            W0 = tf.get_variable('W0', initializer = par['w_out0_0'], trainable=True)
+            b0 = tf.get_variable('b0', initializer = par['b_out0_0'], trainable=True)
+            W1 = tf.get_variable('W1', initializer = par['w_out1_0'], trainable=True)
+            b1 = tf.get_variable('b1', initializer = par['b_out1_0'], trainable=True)
 
         """
         Network output
         Only use excitatory projections from the RNN to the output layer
         """
-        self.y_hat = [tf.matmul(tf.nn.relu(W_out),h)+b_out for h in self.hidden_state_hist]
+        out0 = [tf.nn.relu(tf.matmul(W0,h)+b0) for h in self.hidden_state_hist]
+        self.y_hat = [tf.matmul(W1,h)+b1 for h in out0]
 
     def rnn_cell_loop(self, x_unstacked, h):
 
@@ -119,3 +122,78 @@ class Model:
             capped_gvs.append((tf.clip_by_norm(grad, par['clip_max_grad_val']), var))
 
     self.train_op = opt.apply_gradients(capped_gvs)
+
+def main(gpu_id):
+
+    os.environ["CUDA_VISIBLE_DEVICES"] = gpu_id
+
+    """
+    Reset TensorFlow before running anything
+    """
+    tf.reset_default_graph()
+
+    """
+    Create the stimulus class to generate trial paramaters and input activity
+    """
+    stim = stimulus.Stimulus()
+
+    """
+    Define all placeholder
+    """
+    mask = tf.placeholder(tf.float32, shape=[par['num_time_steps'], par['batch_train_size']])
+    x = tf.placeholder(tf.float32, shape=[par['num_motion_dirs'], par['num_time_steps'], par['batch_train_size']])  # input data
+    y = tf.placeholder(tf.float32, shape=[par['n_output'], par['num_time_steps'], par['batch_train_size']]) # target data
+
+    with tf.Session() as sess:
+
+        #with tf.device("/gpu:0"):
+        model = Model(x, y, mask)
+        init = tf.global_variables_initializer()
+        sess.run(init)
+        t_start = time.time()
+
+        for i in range(par['num_iterations']):
+
+        # generate batch of batch_train_size
+        trial_info = stim.generate_trial()
+
+        _, loss, perf_loss, spike_loss, weight_loss, y_hat, state_hist = \
+            sess.run([model.train_op, model.loss, model.perf_loss, model.spike_loss, \
+            mode.weight_loss, model.y_hat, \
+            model.hidden_state_hist], {x: trial_info['neural_input'], \
+            y: trial_info['desired_output'], mask: trial_info['train_mask']})
+
+        if (i+1)%par['iters_between_outputs']==0 or i+1==par['num_iterations']:
+                print_results(i, N, iteration_time, perf_loss, spike_loss, state_hist, accuracy)
+
+def eval_weights():
+
+    with tf.variable_scope('rnn_cell', reuse=True):
+        W_in = tf.get_variable('W_in')
+        W_rnn = tf.get_variable('W_rnn')
+        b_rnn = tf.get_variable('b_rnn')
+
+    with tf.variable_scope('output', reuse=True):
+        W0 = tf.get_variable('W0')
+        b0 = tf.get_variable('b0')
+        W1 = tf.get_variable('W1')
+        b1 = tf.get_variable('b1')
+
+    weights = {
+        'w_in'  : W_in.eval(),
+        'w_rnn' : W_rnn.eval(),
+        'w0'    : W0.eval(),
+        'w1'    : W1.eval(),
+        'b_rnn' : b_rnn.eval(),
+        'b0'    : b0.eval(),
+        'b1'    : b1.eval()
+    }
+
+    return weights
+
+def print_results(iter_num, trials_per_iter, iteration_time, perf_loss, spike_loss, state_hist, accuracy):
+
+    print('Trial {:7d}'.format((iter_num+1)*trials_per_iter) + ' | Time {:0.2f} s'.format(iteration_time) +
+      ' | Perf loss {:0.4f}'.format(np.mean(perf_loss)) + ' | Spike loss {:0.4f}'.format(np.mean(spike_loss)) +
+      ' | Mean activity {:0.4f}'.format(np.mean(state_hist)) +
+      ' | Accuracy {:0.4f}'.format(np.mean(accuracy)))
