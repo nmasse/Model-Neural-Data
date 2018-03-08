@@ -4,6 +4,7 @@ import stimulus
 import time
 import pickle
 from parameters import *
+import matplotlib.pyplot as plt
 
 # Ignore "use compiled version of TensorFlow" errors
 os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
@@ -155,6 +156,10 @@ def main(gpu_id):
 
             # generate batch of batch_train_size
             trial_info = stim.generate_trial()
+            plt.imshow(trial_info['desired_output'][:,:, 0], aspect = 'auto')
+            plt.show()
+            plt.imshow(trial_info['neural_input'][:,:, 0], aspect = 'auto')
+            plt.show()
 
             _, loss, perf_loss, spike_loss, weight_loss, y_hat, state_hist = \
                 sess.run([model.train_op, model.loss, model.perf_loss, model.spike_loss, \
@@ -164,7 +169,7 @@ def main(gpu_id):
 
             iteration_time = time.time() - t_start
             if (i+1)%par['iters_between_outputs']==0 or i+1==par['num_iterations']:
-                    print_results(i, iteration_time, perf_loss, spike_loss, weight_loss)
+                    print_results(i, iteration_time, perf_loss, spike_loss, weight_loss, trial_info['desired_output'])
 
 def eval_weights():
 
@@ -191,11 +196,11 @@ def eval_weights():
 
     return weights
 
-def print_results(iter_num, iteration_time, perf_loss, spike_loss, weight_loss):
+def print_results(iter_num, iteration_time, perf_loss, spike_loss, weight_loss, out):
 
     print('Trial {:7d}'.format((iter_num+1)*par['batch_train_size']) + ' | Time {:0.2f} s'.format(iteration_time) +
-      ' | Perf loss {:0.4f}'.format(perf_loss) + ' | Spike loss {:0.4f}'.format(spike_loss) +
-      ' | Weight loss {:0.4f}'.format(weight_loss))
+      ' | Perf loss {:0.4f}'.format(1000*perf_loss) + ' | Spike loss {:0.4f}'.format(spike_loss) +
+      ' | Weight loss {:0.4f}'.format(weight_loss) + ' | Var. output {:0.4f}'.format(1000*np.var(out)))
 
 try:
     main(0)

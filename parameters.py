@@ -16,7 +16,7 @@ par = {
 
     # Network shape
     'n_recurrent'           : 5,
-    'n_hidden'              : [6],
+    'n_hidden'              : [20],
 
     # Timings and rates
     'dt'                    : 10,
@@ -78,9 +78,9 @@ def update_dependencies():
 
     data_dir = '/home/masse/'
     data = sio.loadmat(data_dir + 'spike_trains.mat')
-    par['neuron_ind'] = [i for i in data['area'] if i in par['areas']]
+    par['neuron_ind'] = [i for i in range(len(data['area'])) \
+        if data['area'][i][0] in par['areas'] and np.mean(data['spike_train'][:,:,:,i]) < 99]
     par['n_output'] = len(par['neuron_ind'])
-
     par['noise_rnn'] = 1.*par['noise_rnn_sd']
     par['noise_in'] = 1.*par['noise_in_sd'] # since term will be multiplied by par['alpha_neuron']
 
