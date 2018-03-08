@@ -162,8 +162,9 @@ def main(gpu_id):
                 model.hidden_state_hist], {x: trial_info['neural_input'], \
                 y: trial_info['desired_output'], mask: trial_info['train_mask']})
 
+            iteration_time = time.time() - t_start
             if (i+1)%par['iters_between_outputs']==0 or i+1==par['num_iterations']:
-                    print_results(i, iteration_time, perf_loss, spike_loss, state_hist, accuracy)
+                    print_results(i, iteration_time, perf_loss, spike_loss, weight_loss)
 
 def eval_weights():
 
