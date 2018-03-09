@@ -2,6 +2,7 @@ import numpy as np
 import tensorflow as tf
 import os
 import scipy.io as sio
+import matplotlib.pyplot as plt
 
 print("--> Loading parameters...")
 
@@ -15,41 +16,42 @@ par = {
 
 
     # Network shape
-    'n_recurrent'           : 5,
-    'n_hidden'              : [20],
+    'n_recurrent'           : 10,
+    'n_hidden'              : [300],
 
     # Timings and rates
     'dt'                    : 10,
-    'learning_rate'         : 1e-3,
+    'learning_rate'         : 5e-3,
 
     # Areas to include
-    'areas'                 : [1],
+    'areas'                 : [2,3],
 
     # Variance values
     'clip_max_grad_val'     : 1,
     'input_mean'            : 0.0,
     'noise_in_sd'           : 0.05,
-    'noise_rnn_sd'          : 0.25,
+    'noise_rnn_sd'          : 0.1,
 
     # Tuning function data
     'num_motion_dirs'       : 6,
 
     # Cost parameters
     'spike_cost'            : 0.,
-    'weight_cost'           : 1e-7,
+    'weight_cost'           : 1e-6,
 
 
     # Training specs
-    'batch_train_size'      : 256,
-    'num_iterations'        : 2000,
-    'iters_between_outputs' : 10,
+    'batch_train_size'      : 1024,
+    'num_iterations'        : 8000,
+    'iters_between_outputs' : 100,
+    'iters_per_group'       : 4000,
 
     # Task specs
-    'dead_time'             : 100,
-    'fix_time'              : 400,
+    'dead_time'             : 320,
+    'fix_time'              : 100,
     'sample_time'           : 660,
-    'delay_time'            : 1010,
-    'test_time'             : 430,
+    'delay_time'            : 1020,
+    'test_time'             : 400,
 
 
     # Save paths
@@ -78,9 +80,18 @@ def update_dependencies():
 
     data_dir = '/home/masse/'
     data = sio.loadmat(data_dir + 'spike_trains.mat')
-    par['neuron_ind'] = [i for i in range(len(data['area'])) \
-        if data['area'][i][0] in par['areas'] and np.mean(data['spike_train'][:,:,:,i]) < 99]
-    par['n_output'] = len(par['neuron_ind'])
+    s = np.nanmean(np.nanmean(np.nanmean(data['spike_train'],axis=3),axis=1),axis=0)
+    #plt.plot(s[200:230])
+    #plt.show()
+    ind = np.array([int(i) for i in range(len(data['area'])) \
+        if data['area'][i][0] in par['areas'] and np.mean(data['spike_train'][:,:,:,i]) < 99])
+    # neural data will be split into two equakl groups for trainig and testing the RNN
+    # each will have size N
+    N = len(ind)//2
+    q = np.int16(np.random.permutation(N*2))
+    par['neuron_ind'] = [ind[q[:N]], ind[q[N:]]]
+
+    par['n_output'] = N
     par['noise_rnn'] = 1.*par['noise_rnn_sd']
     par['noise_in'] = 1.*par['noise_in_sd'] # since term will be multiplied by par['alpha_neuron']
 
@@ -102,11 +113,19 @@ def update_dependencies():
     # Initialize input weights
     par['w_in0'] = initialize([par['n_recurrent'], par['num_motion_dirs']])
     par['w_rnn0'] = initialize([par['n_recurrent'], par['n_recurrent']])
-    par['w_out0_0'] = initialize([par['n_hidden'][0], par['n_recurrent']])
-    par['w_out1_0'] = initialize([par['n_output'], par['n_hidden'][0]])
-
+    #par['w_rnn0'] = 0.3*np.eye(par['n_recurrent'], dtype = np.float32)
     par['b_rnn0'] = np.zeros((par['n_recurrent'], 1), dtype=np.float32)
+
+    par['w_out0_0'] = initialize([par['n_hidden'][0], par['n_recurrent']])
     par['b_out0_0'] = np.zeros((par['n_hidden'][0], 1), dtype=np.float32)
+
+    """
+    par['w_out1_0'] = initialize([par['n_hidden'][1], par['n_hidden'][0]])
+    par['w_out2_0'] = initialize([par['n_output'], par['n_hidden'][1]])
+    par['b_out1_0'] = np.zeros((par['n_hidden'][1], 1), dtype=np.float32)
+    par['b_out2_0'] = np.zeros((par['n_output'], 1), dtype=np.float32)
+    """
+    par['w_out1_0'] = initialize([par['n_output'], par['n_hidden'][0]])
     par['b_out1_0'] = np.zeros((par['n_output'], 1), dtype=np.float32)
 
 

@@ -10,14 +10,15 @@ class Stimulus:
 
         data_dir = '/home/masse/'
         data = sio.loadmat(data_dir + 'spike_trains.mat')
-        self.spike_data = np.squeeze(data['spike_train'][:,:,:, par['neuron_ind']])
+        u = range(0,250,2)
+        self.spike_data = np.squeeze(data['spike_train'][:,:,:-10, :])
 
-    def generate_trial(self):
+    def generate_trial(self, group_id=0):
 
-        trial_info = self.generate_neural_data_trial()
+        trial_info = self.generate_neural_data_trial(group_id)
         return trial_info
 
-    def generate_neural_data_trial(self):
+    def generate_neural_data_trial(self, group_id):
 
         eodead = par['dead_time']//par['dt']
         eof = (par['dead_time']+par['fix_time'])//par['dt']
@@ -47,6 +48,6 @@ class Stimulus:
             Desired outputs
             """
             trial_info['desired_output'][:,:, t] = \
-                np.transpose(self.spike_data[trial_info['sample'][t], trial_info['test'][t], :, :])
+                1000*self.spike_data[trial_info['sample'][t], trial_info['test'][t], :, par['neuron_ind'][group_id]]
 
         return trial_info
